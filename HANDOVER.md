@@ -12,7 +12,7 @@ Replace the three separate Claude Code extension wirings with a single `vrppaul-
 | `semantic-code` | raw `mcpServers` entry in `~/.claude.json:963-972` | inline MCP plugin under `vrppaul-tools` |
 | Python LSP | `pyright-lsp@claude-plugins-official` enabled | disabled; swapped for `ty-lsp@vrppaul-tools` (inline LSP) |
 
-`ty` is Astral's Rust-based type checker — 10–60× faster cold start than Pyright, `workspaceSymbol` actually works, same `hover` / `goToDefinition` / `findReferences` / `documentSymbol`. **Known gaps:** no `incomingCalls` / `outgoingCalls`, no `goToImplementation`. Grep fallback is fine for call chains.
+`ty` is Astral's Rust-based type checker — 10–60× faster cold start than Pyright, same `hover` / `goToDefinition` / `findReferences` / `documentSymbol`. **Known gaps:** no `incomingCalls` / `outgoingCalls`, no `goToImplementation`. `workspaceSymbol` is also broken for every LSP backend in Claude Code 2.1.114 ([claude-code#17149](https://github.com/anthropics/claude-code/issues/17149) — harness sends `query: ""` regardless of cursor). That was the real cause of the "pyright silent-empty" regression that originally motivated this swap; it's not a ty advantage. Grep fallback is fine for call chains and symbol search.
 
 ## Phase A — local dry-run
 
@@ -59,7 +59,7 @@ Run after A17 and again after B4:
 2. `claude plugin list` → `claude-review`, `semantic-code`, `ty-lsp` enabled under `vrppaul-tools`; `pyright-lsp` disabled.
 3. `LSP` tool with `operation: documentSymbol` on any `.py` file → returns a symbol list.
 4. `LSP hover` on a typed variable → returns an inferred type (confirms `ty` is answering).
-5. `LSP workspaceSymbol` with a real query (e.g. `EventRepository`) → returns results. Pyright's wiring returned "No symbols found" — this check catches a silent regression.
+5. ~~`LSP workspaceSymbol`~~ — skip. Broken for every LSP backend in Claude Code 2.1.114 ([claude-code#17149](https://github.com/anthropics/claude-code/issues/17149)). Re-enable once the harness bug is fixed upstream.
 6. `mcp__semantic-code__index_status` for the current project → returns stats from `~/.cache/semantic-code-mcp/<hash>/`. Same cache as before the switch.
 7. `mcp__semantic-code__search_code` with a simple query → returns results.
 8. `/claude-review:review-ui` skill → opens the UI.
