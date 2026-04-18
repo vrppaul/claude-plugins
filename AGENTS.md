@@ -114,8 +114,9 @@ Uncertain about a field? Read an entry in `~/.claude/plugins/marketplaces/claude
 3. On failure: `claude plugin marketplace remove vrppaul-tools` + roll back configs, fix, revalidate.
 4. Once local passes, push to github and swap:
    ```bash
-   claude plugin marketplace remove vrppaul-tools
+   claude plugin marketplace remove vrppaul-tools         # uninstalls dependent plugins
    claude plugin marketplace add https://github.com/vrppaul/claude-plugins.git
+   claude plugin install <plugin>@vrppaul-tools           # reinstall each one
    ```
 
 ## Commit messages
@@ -134,6 +135,7 @@ Conventional Commits: `type(scope): description`. Types: `feat fix docs style re
 - **MCP cache keyed on absolute project path**, not launch command. Switching wiring preserves it.
 - **`LSP workspaceSymbol` returns empty** for every backend in Claude Code 2.1.114 — upstream bug [claude-code#17149](https://github.com/anthropics/claude-code/issues/17149). Use `Grep`.
 - **Migrating a plugin from old wiring** — remove the old raw `mcpServers` entry from `~/.claude.json` (or old marketplace) in the *same* session as the new install.
+- **`claude plugin marketplace remove` uninstalls dependent plugins.** When swapping a marketplace source (e.g. local-path → github URL), reinstall each plugin after the swap — the install-from tie is broken by the remove.
 
 ## Response Style
 
