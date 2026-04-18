@@ -1,0 +1,33 @@
+{
+  "name": "vrppaul-tools",
+  "owner": {
+    "name": "vrppaul",
+    "email": "vrppaul@github.com"
+  },
+  "metadata": {
+    "description": "Claude Code plugin marketplace: code review, semantic search, and LSP tooling"
+  },
+  "plugins": [
+    {
+      "name": "ty-lsp",
+      "description": "Python LSP via ty (Astral) — fast Rust-based type checker and language server.",
+      "version": "0.1.0",
+      "author": {
+        "name": "vrppaul"
+      },
+      "source": "./plugins/ty-lsp",
+      "category": "development",
+      "strict": false,
+      "lspServers": {
+        "ty": {
+          "command": "uvx",
+          "args": ["ty@latest", "server"],
+          "extensionToLanguage": {
+            ".py": "python",
+            ".pyi": "python"
+          }
+        }
+      }
+    }
+  ]
+}
