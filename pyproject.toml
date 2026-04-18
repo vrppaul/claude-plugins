@@ -1,0 +1,6 @@
+[project]
+name = "vrppaul-tools"
+version = "0.1.0"
+description = "Claude Code plugin marketplace: code review, semantic search, and LSP tooling"
+requires-python = ">=3.14"
+dependencies = []
