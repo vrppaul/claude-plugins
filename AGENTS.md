@@ -171,8 +171,10 @@ If yes:
 ## Documentation
 
 - `README.md` — public: marketplace description, plugin table, install
+- `CONTRIBUTING.md` — public: how to open a PR, branch policy, links to `AGENTS.md`
 - `CLAUDE.md` — thin pointer to this file; never duplicate content here
 - `AGENTS.md` (this file) — everything else
+- `LICENSE` — MIT
 
 **Maintenance:**
 
