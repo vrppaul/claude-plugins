@@ -2,57 +2,45 @@
 
 ## Overview
 
-This repo exists for one reason: to be the [Claude Code plugin marketplace](https://docs.anthropic.com/en/docs/claude-code/plugins) hosting Pavel's personal plugins. No code here, no build — just a `marketplace.json` manifest plus per-plugin subdirs for the thin-wrapper cases.
+Claude Code plugin marketplace for Pavel's personal plugins. No code, no build — a `marketplace.json` manifest plus per-plugin subdirs for inline wrappers.
 
-Plugins come in three shapes, all supported:
-
-| Shape | Example | How it's stored |
+| Shape | Example | Storage |
 |---|---|---|
-| External (git-subdir / url) | `claude-review` (planned — lives in `vrppaul/claude-review`) | nothing in this repo; pulled from the referenced repo at install time |
-| Inline MCP | `semantic-code` (planned — wraps PyPI `semantic-code-mcp` via `uvx`) | `plugins/<name>/.mcp.json` + marketplace entry |
-| Inline LSP | `ty-lsp` (shipped — wraps `uvx ty@latest server`) | marketplace entry holds the `lspServers` block; plugin subdir has docs only |
+| External (git-subdir / url) | `claude-review` (planned) | referenced repo; nothing here |
+| Inline MCP | `semantic-code` (planned) | `plugins/<name>/.mcp.json` + marketplace entry |
+| Inline LSP | `ty-lsp` (shipped) | `lspServers` block in marketplace entry; subdir has docs only |
 
-The authoritative plugin list is `.claude-plugin/marketplace.json`. `README.md` is the user-facing view.
+Authoritative plugin list: `.claude-plugin/marketplace.json`. User-facing: `README.md`.
 
 ## Structure
 
 ```
-.claude-plugin/
-  marketplace.json          # manifest — source of truth for the plugin list
-plugins/
-  <plugin-name>/
-    .mcp.json               # MCP plugins only — auto-discovered by Claude Code
-    README.md               # per-plugin docs (optional but expected)
-pyproject.toml              # stub from `uv init --bare`; unused, kept for future tooling
+.claude-plugin/marketplace.json    # source of truth
+plugins/<name>/
+  .mcp.json                        # MCP plugins only
+  README.md                        # per-plugin docs
+pyproject.toml                     # unused stub
 ```
 
-External plugins have no subdir here at all.
+External plugins have no subdir.
 
 ## Commands
 
-All tooling is the `claude plugin` CLI:
-
 ```bash
-claude plugin validate <path>                        # schema-check a marketplace or plugin
-claude plugin marketplace add <path-or-url>          # register a marketplace (local path or git URL)
-claude plugin marketplace remove <name>              # unregister
-claude plugin marketplace list                       # show registered marketplaces
-claude plugin marketplace update <name>              # pull latest for a registered marketplace
-claude plugin install <plugin>@<marketplace>         # install and enable a plugin
-claude plugin disable <plugin>@<marketplace>         # disable without uninstalling
-claude plugin uninstall <plugin>@<marketplace>       # remove entirely
-claude plugin list                                   # show installed plugins
+claude plugin validate <path>                 # schema-check
+claude plugin marketplace add <path-or-url>   # register (path or git URL)
+claude plugin marketplace remove <name>
+claude plugin marketplace list
+claude plugin marketplace update <name>       # pull latest
+claude plugin install <plugin>@<marketplace>
+claude plugin disable <plugin>@<marketplace>
+claude plugin uninstall <plugin>@<marketplace>
+claude plugin list
 ```
-
-A Claude Code **restart is required** for any marketplace or plugin change to take effect. Flag this to the user before the change lands.
 
 ## Manifest conventions
 
-The `marketplace.json` schema follows Anthropic's official marketplaces, with one non-obvious rule:
-
-> **Marketplace description goes under `metadata.description`, not at the root.** The validator rejects top-level `$schema` and `description` — keys the official marketplace itself includes (it also fails validation, but the runtime tolerates them). Use the shape below to get a clean validate.
-
-Top-level skeleton:
+Root skeleton — **put description under `metadata.description`**. Validator rejects top-level `$schema` and `description`; the official marketplace has both and also fails validation.
 
 ```json
 {
@@ -63,14 +51,11 @@ Top-level skeleton:
 }
 ```
 
-### Inline LSP plugin (`ty-lsp` pattern)
-
-`lspServers` block lives **inline in the marketplace.json entry**. The plugin subdir contains docs only.
+**Inline LSP** (`ty-lsp`) — `lspServers` inline in the entry; subdir has docs only.
 
 ```json
 {
   "name": "ty-lsp",
-  "description": "Python LSP via ty (Astral) — fast Rust-based type checker.",
   "version": "0.1.0",
   "source": "./plugins/ty-lsp",
   "category": "development",
@@ -85,43 +70,21 @@ Top-level skeleton:
 }
 ```
 
-Reference the `pyright-lsp` entry in `~/.claude/plugins/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json` when in doubt about a field.
+**Inline MCP** (`semantic-code`) — `.mcp.json` in the plugin subdir, omit `env: {}`.
 
-### Inline MCP plugin (`semantic-code` pattern)
-
-The `.mcp.json` lives inside the plugin source dir and is auto-discovered. The marketplace.json entry just points `source` at the dir.
-
-`plugins/<name>/.mcp.json`:
 ```json
-{
-  "<server-name>": {
-    "command": "uvx",
-    "args": ["…"]
-  }
-}
+// plugins/<name>/.mcp.json
+{ "<server-name>": { "command": "uvx", "args": ["…"] } }
+
+// marketplace entry
+{ "name": "<name>", "version": "0.1.0", "source": "./plugins/<name>", "category": "development" }
 ```
 
-**Omit `env: {}` when there are no env vars** — official `playwright` and `serena` `.mcp.json`s skip it. Do not copy empty `env` blocks forward from raw `mcpServers` entries in `~/.claude.json`.
-
-`marketplace.json` entry:
-```json
-{
-  "name": "semantic-code",
-  "description": "…",
-  "version": "0.1.0",
-  "source": "./plugins/semantic-code",
-  "category": "development"
-}
-```
-
-### External plugin (`claude-review` pattern)
-
-For plugins whose source lives in another repo — either the root of that repo (`source: url`) or a subdirectory (`source: git-subdir`).
+**External** (`claude-review`) — `ref` must match the target repo's default branch (`git -C <path> branch --show-current`), not an assumed `main`. Pin with `"sha"` for stability.
 
 ```json
 {
   "name": "claude-review",
-  "description": "…",
   "source": {
     "source": "git-subdir",
     "url": "https://github.com/vrppaul/claude-review.git",
@@ -132,27 +95,24 @@ For plugins whose source lives in another repo — either the root of that repo 
 }
 ```
 
-`ref` must match the default branch of the target repo — verify with `git -C <repo-path> branch --show-current`. Pin with an optional `"sha": "<commit>"` when stability matters more than freshness.
+Uncertain about a field? Read an entry in `~/.claude/plugins/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json`.
 
 ## Adding a new plugin
 
-1. Create `plugins/<name>/` if inline. For MCP plugins, write `.mcp.json`. For LSP plugins, a `README.md` is enough — the config lives in `marketplace.json`. External plugins have no subdir here.
-2. Add an entry to `.claude-plugin/marketplace.json` using the matching template above.
-3. Set `version: "0.1.0"` on a brand-new inline entry. On subsequent edits, bump: `feat` → minor, `fix` → patch.
-4. Update the plugin table in `README.md`.
+1. Inline: create `plugins/<name>/`. External: no subdir.
+2. Add entry to `marketplace.json` (template above).
+3. New inline entry starts at `version: "0.1.0"`. Later: `feat` → minor, `fix` → patch.
+4. Update `README.md` plugin table.
 5. `claude plugin validate .` — must pass.
-6. Test locally (see *Testing workflow*) before touching the github remote.
+6. Test locally (below) before pushing.
 7. Commit: `feat(plugins): add <name>`.
-8. Push. Users get the update via `claude plugin marketplace update vrppaul-tools`.
 
 ## Testing workflow
 
-Never push to github before proving a change works locally. `claude plugin marketplace add` accepts either a filesystem path or a git URL — exploit that:
-
-1. `claude plugin marketplace add ~/projects/claude-plugins` — register as a local-path marketplace.
-2. Install / disable plugins as needed, run verification, let the user restart and confirm.
-3. If anything fails: `claude plugin marketplace remove vrppaul-tools` + roll back any config changes, fix the manifest, re-validate.
-4. Once local verification passes, commit and push to github. Then swap the source:
+1. `claude plugin marketplace add ~/projects/claude-plugins` — local path.
+2. Install / disable, run verification, user restarts, confirm.
+3. On failure: `claude plugin marketplace remove vrppaul-tools` + roll back configs, fix, revalidate.
+4. Once local passes, push to github and swap:
    ```bash
    claude plugin marketplace remove vrppaul-tools
    claude plugin marketplace add https://github.com/vrppaul/claude-plugins.git
@@ -160,63 +120,68 @@ Never push to github before proving a change works locally. `claude plugin marke
 
 ## Commit messages
 
-Conventional Commits: `type(scope): description`.
-
-Types: `feat fix docs style refactor chore`. `feat(plugins): add <name>` for new plugins, `fix(manifest): …` for manifest bugs, `chore(docs): …` for README/AGENTS.md edits, `refactor(<plugin>): …` for per-plugin manifest changes.
-
-Version impact: `feat` → minor bump on the affected plugin's `version`. `fix` → patch bump. Others → no bump.
+Conventional Commits: `type(scope): description`. Types: `feat fix docs style refactor chore`. Version impact: `feat` → minor on affected plugin, `fix` → patch, others → none.
 
 ## Gotchas
 
-- **Validator rejects top-level `$schema` / `description`.** Put description under `metadata.description`. Official marketplace violates this too — don't copy its skeleton blindly.
-- **`env: {}` in `.mcp.json`.** Omit. Empty env blocks break nothing but diverge from the official shape.
-- **Two plugins claiming the same `.py` (or same MCP server name).** Dispatch is ambiguous. Disable the outgoing plugin *before* installing the replacement.
-- **`~/.claude.json` is not under git.** The only rollback path for it is a manual snapshot (see Boundaries:Always).
-- **First `uvx <tool>@latest server` invocation downloads the tool.** One-time cost, later sessions reuse the `uv` cache.
-- **External plugin `ref` must match the target repo's default branch.** `claude-review`'s is `master`, not `main`; don't assume.
-- **MCP cache is keyed on absolute project path**, not on how the server is launched. Switching from a raw `mcpServers` entry to an inline MCP plugin does not invalidate the existing cache.
-- **`LSP workspaceSymbol` returns empty for every LSP backend in Claude Code 2.1.114.** Upstream harness bug — [claude-code#17149](https://github.com/anthropics/claude-code/issues/17149). Use `Grep` for symbol search.
-- **When migrating a plugin from an old wiring:** remove the old raw `mcpServers` entry from `~/.claude.json` (or remove the old single-purpose marketplace) in the *same* session as the new install. Leaving both wired causes name conflicts at startup.
+- **`metadata.description`** — description at root fails validation.
+- **Omit `env: {}`** in `.mcp.json`.
+- **Two plugins claiming the same `.py` or MCP server name** — ambiguous dispatch. Disable outgoing *before* installing replacement.
+- **Claude Code restart** required for every marketplace / plugin change. Flag before the change lands.
+- **`~/.claude.json` is not under git.** Snapshot before editing.
+- **First `uvx <tool>@latest`** downloads the tool; later sessions reuse the cache.
+- **External plugin `ref`** — match the target repo's default branch. Don't assume `main`.
+- **MCP cache keyed on absolute project path**, not launch command. Switching wiring preserves it.
+- **`LSP workspaceSymbol` returns empty** for every backend in Claude Code 2.1.114 — upstream bug [claude-code#17149](https://github.com/anthropics/claude-code/issues/17149). Use `Grep`.
+- **Migrating a plugin from old wiring** — remove the old raw `mcpServers` entry from `~/.claude.json` (or old marketplace) in the *same* session as the new install.
 
-## Response style
+## Response Style
 
-Lead with the answer; no preamble, recap, or trailing summary. One reason per claim — don't restate in different words. Structure (headers, bullets) only for ≥ 4 parallel items; otherwise prose. Keep code blocks, `file:line` cites, and concrete evidence. Drop hedge words when not uncertain, announcement verbs ("I found", "I ran"), and editorial commentary.
+Lead with the answer; no preamble, recap, or trailing summary. One reason per claim — don't restate in different words. Structure (headers, bullets) only for ≥4 parallel items; otherwise prose. Keep code blocks, `file:line` cites, and concrete evidence. Drop hedge words when not uncertain, announcement verbs ("I found", "I ran"), and editorial commentary.
 
-## Session retro
+## Session Retro
 
-When a session feels like it's wrapping up (after ship/commit/handover, or on a user closure signal), propose one: "Want a quick retro?"
+At session close (ship/commit/handover or closure signal), propose: "Want a quick retro?"
 
-If yes, four steps:
-
+If yes:
 1. **Went well** — concrete behaviors to keep.
 2. **Went poorly** — specific moments that cost time.
 3. **Ask the user** — what they'd flag that you missed.
-4. **Propose captures** — per lesson: new rule, AGENTS.md edit, memory, or discard. User approves each.
-
-Session lessons decay fast; untracked retros waste the learning.
+4. **Propose captures** — per lesson: rule, AGENTS.md edit, memory, or discard. User approves each.
 
 ## Boundaries
 
 **Always:**
-- Validate the manifest with `claude plugin validate .` before committing
+- `claude plugin validate .` before committing
 - Test via local-path marketplace before pushing to github
-- Snapshot `~/.claude/settings.json` and `~/.claude.json` to `~/.claude/backups/<timestamp>/` before editing either
-- Read one of the official `claude-plugins-official` entries if uncertain about a field
+- Snapshot `~/.claude/settings.json` and `~/.claude.json` to `~/.claude/backups/<ts>/` before editing either
 
 **Ask first:**
-- Schema-level changes to `marketplace.json` shape (beyond adding / editing plugin entries)
-- Adding plugins that require auth, private repos, or user-specific credentials
-- Renaming the marketplace (`name` field) — cascades to every user's settings.json and install references
-- First-time `gh repo create` or `git push` for this repo (Phase B publish)
+- Schema-level changes to `marketplace.json` shape
+- Plugins requiring auth, private repos, or user-specific credentials
+- Renaming the marketplace `name` (cascades to every install)
+- First-time `gh repo create` or `git push` for this repo
 
 **Never:**
-- Manually edit `enabledPlugins` / `extraKnownMarketplaces` in `~/.claude/settings.json` — use the `claude plugin` CLI
+- Hand-edit `enabledPlugins` / `extraKnownMarketplaces` in `~/.claude/settings.json` — use the CLI
 - Push to github before local verification passes
-- Copy an empty `env: {}` block into a `.mcp.json`
-- Install a plugin without disabling any existing plugin that claims the same file extension (LSPs) or MCP server name
+- Copy an empty `env: {}` into `.mcp.json`
+- Install a plugin without disabling any existing one claiming the same file extension or MCP server name
 
 ## Documentation
 
-- `README.md` — public-facing: what the marketplace is, plugin table, install instructions
-- `CLAUDE.md` — thin pointer to this file
-- `AGENTS.md` (this file) — everything else: structure, manifest conventions, workflow, gotchas, boundaries
+- `README.md` — public: marketplace description, plugin table, install
+- `CLAUDE.md` — thin pointer to this file; never duplicate content here
+- `AGENTS.md` (this file) — everything else
+
+**Maintenance:**
+
+- Adding / removing / renaming a plugin: update `marketplace.json` and `README.md` plugin table in the same commit.
+- New landmine surfaces in a session → add one bullet to `Gotchas`. Rule goes obsolete (e.g. upstream bug fixed) → remove or update it; don't leave stale guidance.
+- No disposable docs (HANDOVER.md, STATUS.md, TODO.md). Durable info → `AGENTS.md`. Ephemeral → memory or chat.
+
+**Writing style:**
+
+- Terse. Only necessary info, concise without losing meaning.
+- Prefer tables and code blocks over prose. No preamble, no trailing recap.
+- One-line rules stay one line. Don't expand for symmetry.
